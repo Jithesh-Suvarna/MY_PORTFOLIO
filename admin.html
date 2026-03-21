@@ -1,0 +1,1223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel | Jithesh Suvarna</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600;700&family=DM+Sans:wght@300;400;500&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+    <!-- ✅ STEP 1: Replace with your Firebase config -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, orderBy, query } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+
+        // 🔧 REPLACE THIS with your actual Firebase config from Firebase Console
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const storage = getStorage(app);
+
+        // Expose to global scope
+        window._firebase = { db, storage, collection, addDoc, getDocs, deleteDoc, doc, orderBy, query, ref, uploadBytes, getDownloadURL, deleteObject };
+    </script>
+
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg: #080808;
+            --bg-alt: #0d0d0d;
+            --card: #111111;
+            --card-hover: #161616;
+            --gold: #c9a84c;
+            --gold-light: #e8c97a;
+            --gold-dim: rgba(201,168,76,0.12);
+            --gold-border: rgba(201,168,76,0.2);
+            --text: #f5f0e8;
+            --muted: #7a7065;
+            --red: #c94c4c;
+            --green: #4caf50;
+            --font-display: 'Cormorant Garamond', serif;
+            --font-body: 'DM Sans', sans-serif;
+            --font-mono: 'Space Mono', monospace;
+        }
+
+        html, body {
+            height: 100%;
+            font-family: var(--font-body);
+            background: var(--bg);
+            color: var(--text);
+            overflow-x: hidden;
+        }
+
+        /* ===== LOGIN SCREEN ===== */
+        #login-screen {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            background: var(--bg);
+            position: relative;
+        }
+
+        #login-screen::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(ellipse at 30% 50%, rgba(201,168,76,0.06) 0%, transparent 60%),
+                        radial-gradient(ellipse at 70% 20%, rgba(201,168,76,0.04) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
+        .login-box {
+            width: 100%;
+            max-width: 420px;
+            background: var(--card);
+            border: 1px solid var(--gold-border);
+            padding: 3rem 2.5rem;
+            position: relative;
+            animation: fadeIn 0.6s ease;
+        }
+
+        .login-box::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(to right, transparent, var(--gold), transparent);
+        }
+
+        .login-logo {
+            font-family: var(--font-display);
+            font-size: 3rem;
+            font-weight: 700;
+            color: var(--gold);
+            text-align: center;
+            margin-bottom: 0.3rem;
+        }
+
+        .login-subtitle {
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            color: var(--muted);
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+
+        .form-field {
+            margin-bottom: 1.2rem;
+        }
+
+        .form-field label {
+            display: block;
+            font-family: var(--font-mono);
+            font-size: 0.62rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--muted);
+            margin-bottom: 0.5rem;
+        }
+
+        .form-field input, .form-field textarea, .form-field select {
+            width: 100%;
+            font-family: var(--font-body);
+            font-size: 0.95rem;
+            padding: 0.85rem 1rem;
+            background: var(--bg);
+            border: 1px solid var(--gold-border);
+            color: var(--text);
+            outline: none;
+            transition: border-color 0.3s, box-shadow 0.3s;
+            border-radius: 2px;
+            -webkit-appearance: none;
+        }
+
+        .form-field input:focus, .form-field textarea:focus, .form-field select:focus {
+            border-color: var(--gold);
+            box-shadow: 0 0 12px rgba(201,168,76,0.15);
+        }
+
+        .form-field input::placeholder, .form-field textarea::placeholder {
+            color: var(--muted);
+        }
+
+        .form-field select option {
+            background: var(--card);
+        }
+
+        .form-field textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .login-error {
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            color: var(--red);
+            text-align: center;
+            margin-bottom: 1rem;
+            min-height: 1em;
+            letter-spacing: 0.05em;
+        }
+
+        .btn {
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            padding: 0.9rem 1.5rem;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
+            border-radius: 2px;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            white-space: nowrap;
+        }
+
+        .btn-gold {
+            background: var(--gold);
+            color: var(--bg);
+            width: 100%;
+            justify-content: center;
+        }
+
+        .btn-gold:hover { background: var(--gold-light); box-shadow: 0 0 20px rgba(201,168,76,0.25); }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--gold);
+            border: 1px solid var(--gold);
+        }
+
+        .btn-outline:hover { background: var(--gold-dim); }
+
+        .btn-red {
+            background: rgba(201,76,76,0.15);
+            color: var(--red);
+            border: 1px solid rgba(201,76,76,0.3);
+            padding: 0.5rem 0.8rem;
+            font-size: 0.6rem;
+        }
+
+        .btn-red:hover { background: rgba(201,76,76,0.25); }
+
+        .btn-sm {
+            padding: 0.5rem 1rem;
+            font-size: 0.62rem;
+        }
+
+        /* ===== DASHBOARD ===== */
+        #dashboard {
+            display: none;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            position: fixed;
+            top: 0; left: 0; bottom: 0;
+            width: 220px;
+            background: var(--card);
+            border-right: 1px solid var(--gold-border);
+            display: flex;
+            flex-direction: column;
+            z-index: 100;
+            padding: 2rem 0;
+        }
+
+        .sidebar-logo {
+            font-family: var(--font-display);
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--gold);
+            padding: 0 1.5rem 2rem;
+            border-bottom: 1px solid var(--gold-border);
+            margin-bottom: 1.5rem;
+        }
+
+        .sidebar-logo span {
+            display: block;
+            font-family: var(--font-mono);
+            font-size: 0.55rem;
+            color: var(--muted);
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            margin-top: 0.2rem;
+        }
+
+        .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.85rem 1.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-left: 2px solid transparent;
+
+    /* FIX for compatibility */
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+        .nav-item:hover { color: var(--text); background: rgba(201,168,76,0.05); }
+
+        .nav-item.active {
+            color: var(--gold);
+            border-left-color: var(--gold);
+            background: var(--gold-dim);
+        }
+
+        .nav-item .icon { font-size: 1rem; width: 20px; text-align: center; }
+
+        .nav-badge {
+            margin-left: auto;
+            background: var(--gold);
+            color: var(--bg);
+            font-size: 0.55rem;
+            padding: 0.15rem 0.45rem;
+            border-radius: 10px;
+            font-weight: 700;
+        }
+
+        .sidebar-footer {
+            margin-top: auto;
+            padding: 1.5rem;
+            border-top: 1px solid var(--gold-border);
+        }
+
+        .logout-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            font-family: var(--font-mono);
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--muted);
+            cursor: pointer;
+            transition: color 0.3s;
+            background: none;
+            border: none;
+            padding: 0;
+        }
+
+        .logout-btn:hover { color: var(--red); }
+
+        /* Main Content */
+        .main {
+            margin-left: 220px;
+            padding: 2.5rem 2.5rem;
+            min-height: 100vh;
+        }
+
+        .page { display: none; }
+        .page.active { display: block; animation: fadeIn 0.4s ease; }
+
+        .page-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--gold-border);
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .page-title {
+            font-family: var(--font-display);
+            font-size: 2.2rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .page-title span {
+            color: var(--gold);
+        }
+
+        /* Stats row */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.2rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-tile {
+            background: var(--card);
+            border: 1px solid var(--gold-border);
+            padding: 1.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-tile::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0;
+            width: 100%; height: 2px;
+            background: linear-gradient(to right, var(--gold), transparent);
+        }
+
+        .stat-tile-num {
+            font-family: var(--font-display);
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--gold);
+            line-height: 1;
+        }
+
+        .stat-tile-label {
+            font-family: var(--font-mono);
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--muted);
+            margin-top: 0.4rem;
+        }
+
+        /* Messages */
+        .messages-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .message-card {
+            background: var(--card);
+            border: 1px solid var(--gold-border);
+            padding: 1.5rem;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .message-card:hover { border-color: var(--gold); }
+
+        .message-card.unread::before {
+            content: '';
+            position: absolute;
+            left: 0; top: 0; bottom: 0;
+            width: 3px;
+            background: var(--gold);
+        }
+
+        .msg-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 0.8rem;
+            flex-wrap: wrap;
+        }
+
+        .msg-sender {
+            font-family: var(--font-display);
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .msg-email {
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            color: var(--gold);
+            margin-top: 0.2rem;
+        }
+
+        .msg-date {
+            font-family: var(--font-mono);
+            font-size: 0.6rem;
+            color: var(--muted);
+            letter-spacing: 0.05em;
+            white-space: nowrap;
+        }
+
+        .msg-body {
+            font-size: 0.9rem;
+            color: var(--muted);
+            line-height: 1.7;
+            margin-bottom: 1rem;
+        }
+
+        .msg-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+        /* Projects */
+        .project-form-card {
+            background: var(--card);
+            border: 1px solid var(--gold-border);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            position: relative;
+        }
+
+        .project-form-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 1px;
+            background: linear-gradient(to right, var(--gold), transparent);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.2rem;
+        }
+
+        .form-grid .full { grid-column: span 2; }
+
+        .projects-grid-admin {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.2rem;
+        }
+
+        .project-admin-card {
+            background: var(--card);
+            border: 1px solid var(--gold-border);
+            border-radius: 6px;
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+
+        .project-admin-card:hover { border-color: var(--gold); transform: translateY(-3px); }
+
+        .project-admin-img {
+            width: 100%;
+            height: 140px;
+            object-fit: cover;
+            background: var(--bg-alt);
+            display: block;
+        }
+
+        .project-admin-img-placeholder {
+            width: 100%;
+            height: 140px;
+            background: linear-gradient(135deg, #111 0%, #0a0a0a 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+        }
+
+        .project-admin-body { padding: 1.2rem; }
+
+        .project-admin-name {
+            font-family: var(--font-display);
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 0.4rem;
+        }
+
+        .project-admin-desc {
+            font-size: 0.8rem;
+            color: var(--muted);
+            line-height: 1.5;
+            margin-bottom: 0.8rem;
+        }
+
+        .project-admin-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.3rem;
+            margin-bottom: 1rem;
+        }
+
+        .tag-pill {
+            font-family: var(--font-mono);
+            font-size: 0.55rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            padding: 0.25rem 0.5rem;
+            border: 1px solid var(--gold-border);
+            border-radius: 2px;
+            color: var(--muted);
+        }
+
+        /* Image upload */
+        .img-upload-area {
+            border: 2px dashed var(--gold-border);
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: var(--bg);
+            position: relative;
+        }
+
+        .img-upload-area:hover { border-color: var(--gold); background: var(--gold-dim); }
+        .img-upload-area input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+
+        .img-upload-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+        .img-upload-text { font-family: var(--font-mono); font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+        .img-preview { max-width: 100%; max-height: 150px; margin-top: 1rem; border: 1px solid var(--gold-border); }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            padding: 1rem 1.5rem;
+            background: var(--card);
+            border: 1px solid var(--gold);
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            letter-spacing: 0.08em;
+            color: var(--gold);
+            z-index: 9999;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            max-width: 300px;
+        }
+
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .toast.error { border-color: var(--red); color: var(--red); }
+
+        /* Loading spinner */
+        .spinner {
+            width: 20px; height: 20px;
+            border: 2px solid var(--gold-border);
+            border-top-color: var(--gold);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            display: inline-block;
+        }
+
+        .loading-overlay {
+            position: fixed; inset: 0;
+            background: rgba(8,8,8,0.8);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 9998;
+            display: none;
+        }
+
+        .loading-overlay.show { display: flex; }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--muted);
+        }
+
+        .empty-state .empty-icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.4; }
+        .empty-state p { font-family: var(--font-mono); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; }
+
+        /* Section header inside pages */
+        .section-label {
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--gold);
+            margin-bottom: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-label::after { content: ''; flex: 1; height: 1px; background: var(--gold-border); }
+
+        /* Confirm modal */
+        .modal-overlay {
+            position: fixed; inset: 0;
+            background: rgba(8,8,8,0.9);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 9997;
+            display: none;
+        }
+
+        .modal-overlay.show { display: flex; }
+
+        .modal-box {
+            background: var(--card);
+            border: 1px solid var(--gold-border);
+            padding: 2rem;
+            max-width: 380px;
+            width: 90%;
+            text-align: center;
+        }
+
+        .modal-box h3 {
+            font-family: var(--font-display);
+            font-size: 1.5rem;
+            margin-bottom: 0.8rem;
+        }
+
+        .modal-box p {
+            font-size: 0.85rem;
+            color: var(--muted);
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+        }
+
+        .modal-actions { display: flex; gap: 1rem; justify-content: center; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .main { margin-left: 0; padding: 1.5rem; }
+            .form-grid { grid-template-columns: 1fr; }
+            .form-grid .full { grid-column: span 1; }
+            .stats-row { grid-template-columns: 1fr; }
+            .projects-grid-admin { grid-template-columns: 1fr; }
+        }
+
+        /* Firebase setup warning */
+        .firebase-warning {
+            background: rgba(201,168,76,0.08);
+            border: 1px solid var(--gold-border);
+            border-left: 3px solid var(--gold);
+            padding: 1rem 1.2rem;
+            margin-bottom: 1.5rem;
+            font-size: 0.8rem;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        .firebase-warning strong { color: var(--gold); font-family: var(--font-mono); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; display: block; margin-bottom: 0.3rem; }
+    </style>
+</head>
+<body>
+
+<!-- ===== LOGIN SCREEN ===== -->
+<div id="login-screen">
+    <div class="login-box">
+        <div class="login-logo">J.</div>
+        <div class="login-subtitle">Admin Panel Access</div>
+        <div class="login-error" id="login-error"></div>
+        <div class="form-field">
+            <label>Email Address</label>
+            <input type="email" id="login-email" placeholder="admin@gmail.com" autocomplete="email">
+        </div>
+        <div class="form-field">
+            <label>Password</label>
+            <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password">
+        </div>
+        <button class="btn btn-gold" id="login-btn" onclick="handleLogin()">Access Dashboard</button>
+        <div style="margin-top:1rem; text-align:center">
+            <a href="index.html" style="font-family:var(--font-mono);font-size:0.6rem;color:var(--muted);text-decoration:none;text-transform:uppercase;letter-spacing:0.1em;">← Back to Portfolio</a>
+        </div>
+    </div>
+</div>
+
+<!-- ===== DASHBOARD ===== -->
+<div id="dashboard">
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-logo">J. <span>Admin Panel</span></div>
+        <div class="nav-item active" onclick="showPage('projects')">
+            <span class="icon">🚀</span> Projects
+        </div>
+        <div class="nav-item" onclick="showPage('messages')">
+            <span class="icon">✉</span> Messages
+            <span class="nav-badge" id="msg-badge" style="display:none">0</span>
+        </div>
+        <div class="sidebar-footer">
+            <button class="logout-btn" onclick="handleLogout()">
+                <span>⏻</span> Logout
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main">
+
+        <!-- Projects Page -->
+        <div class="page active" id="page-projects">
+            <div class="page-header">
+                <div class="page-title">My <span>Projects</span></div>
+                <button class="btn btn-outline btn-sm" onclick="document.getElementById('add-form').scrollIntoView({behavior:'smooth'})">+ Add New Project</button>
+            </div>
+
+            <div class="stats-row">
+                <div class="stat-tile">
+                    <div class="stat-tile-num" id="stat-projects">—</div>
+                    <div class="stat-tile-label">Total Projects</div>
+                </div>
+                <div class="stat-tile">
+                    <div class="stat-tile-num" id="stat-msgs">—</div>
+                    <div class="stat-tile-label">Total Messages</div>
+                </div>
+                <div class="stat-tile">
+                    <div class="stat-tile-num">✓</div>
+                    <div class="stat-tile-label">Firebase Connected</div>
+                </div>
+            </div>
+
+            <!-- Current Projects -->
+            <div class="section-label">Current Projects</div>
+            <div class="projects-grid-admin" id="projects-grid">
+                <div class="empty-state">
+                    <div class="empty-icon">📂</div>
+                    <p>Loading projects...</p>
+                </div>
+            </div>
+
+            <!-- Add Project Form -->
+            <div style="margin-top:2.5rem">
+                <div class="section-label">Add New Project</div>
+                <div class="project-form-card" id="add-form">
+                    <div class="firebase-warning">
+                        <strong>⚠ Firebase Setup Required</strong>
+                        Open admin.html in a code editor and replace <code>YOUR_API_KEY</code> etc. at the top with your actual Firebase config. Also enable <strong>Firestore</strong> and <strong>Storage</strong> in your Firebase Console.
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-field">
+                            <label>Project Name *</label>
+                            <input type="text" id="proj-name" placeholder="e.g. Krishi AI">
+                        </div>
+                        <div class="form-field">
+                            <label>Category / Meta *</label>
+                            <input type="text" id="proj-meta" placeholder="e.g. AI + Agriculture">
+                        </div>
+                        <div class="form-field full">
+                            <label>Description *</label>
+                            <textarea id="proj-desc" placeholder="What does this project do?"></textarea>
+                        </div>
+                        <div class="form-field">
+                            <label>Tech Tags (comma separated)</label>
+                            <input type="text" id="proj-tags" placeholder="Python, Firebase, React">
+                        </div>
+                        <div class="form-field">
+                            <label>GitHub / Live URL</label>
+                            <input type="url" id="proj-link" placeholder="https://github.com/...">
+                        </div>
+                        <div class="form-field">
+                            <label>Project Emoji Icon</label>
+                            <input type="text" id="proj-icon" placeholder="🤖" maxlength="4">
+                        </div>
+                        <div class="form-field">
+                            <label>Badge Label</label>
+                            <input type="text" id="proj-badge" placeholder="e.g. Featured, AI Platform">
+                        </div>
+                        <div class="form-field full">
+                            <label>Project Image</label>
+                            <div class="img-upload-area" id="upload-area">
+                                <input type="file" id="proj-img" accept="image/*" onchange="handleImagePreview(this)">
+                                <div class="img-upload-icon">📷</div>
+                                <div class="img-upload-text">Click to upload image (JPG, PNG, WebP)</div>
+                                <img class="img-preview" id="img-preview" style="display:none">
+                            </div>
+                        </div>
+                    </div>
+                    <div style="margin-top:1.5rem; display:flex; gap:1rem; flex-wrap:wrap;">
+                        <button class="btn btn-gold" onclick="addProject()">Add Project to Portfolio</button>
+                        <button class="btn btn-outline btn-sm" onclick="clearForm()">Clear Form</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Messages Page -->
+        <div class="page" id="page-messages">
+            <div class="page-header">
+                <div class="page-title">Contact <span>Messages</span></div>
+                <button class="btn btn-outline btn-sm" onclick="loadMessages()">↻ Refresh</button>
+            </div>
+            <div class="messages-list" id="messages-list">
+                <div class="empty-state">
+                    <div class="empty-icon">✉</div>
+                    <p>Loading messages...</p>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- .main -->
+</div><!-- #dashboard -->
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loading">
+    <div class="spinner"></div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Confirm Modal -->
+<div class="modal-overlay" id="confirm-modal">
+    <div class="modal-box">
+        <h3>Are you sure?</h3>
+        <p id="confirm-text">This action cannot be undone.</p>
+        <div class="modal-actions">
+            <button class="btn btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-red" id="confirm-action-btn">Delete</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    'use strict';
+
+    // ===== CREDENTIALS (Change these if needed) =====
+    const ADMIN_EMAIL = 'admin@gmail.com';
+    const ADMIN_PASS  = 'jithesh';
+
+    // ===== AUTH =====
+    function handleLogin() {
+        const email = document.getElementById('login-email').value.trim();
+        const pass  = document.getElementById('login-pass').value;
+        const err   = document.getElementById('login-error');
+
+        if (email === ADMIN_EMAIL && pass === ADMIN_PASS) {
+            sessionStorage.setItem('admin_auth', '1');
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'block';
+            init();
+        } else {
+            err.textContent = 'Invalid email or password.';
+            document.getElementById('login-pass').value = '';
+            setTimeout(() => err.textContent = '', 3000);
+        }
+    }
+
+    function handleLogout() {
+        sessionStorage.removeItem('admin_auth');
+        location.reload();
+    }
+
+    // Allow enter key on login
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && document.getElementById('login-screen').style.display !== 'none') {
+            handleLogin();
+        }
+    });
+
+    // Check if already logged in
+    if (sessionStorage.getItem('admin_auth') === '1') {
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('dashboard').style.display = 'block';
+        window.addEventListener('load', init);
+    }
+
+    window.handleLogin  = handleLogin;
+    window.handleLogout = handleLogout;
+
+    // ===== NAVIGATION =====
+    window.showPage = function(page) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        document.getElementById('page-' + page).classList.add('active');
+        event.currentTarget.classList.add('active');
+
+        if (page === 'messages') loadMessages();
+    };
+
+    // ===== INIT =====
+    async function init() {
+        await loadProjects();
+        await updateStats();
+    }
+
+    // ===== FIREBASE HELPERS =====
+    function getFirebase() {
+        return window._firebase || null;
+    }
+
+    // ===== TOAST =====
+    function toast(msg, isError = false) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.className = 'toast show' + (isError ? ' error' : '');
+        setTimeout(() => t.className = 'toast', 3000);
+    }
+
+    // ===== LOADING =====
+    function setLoading(show) {
+        document.getElementById('loading').classList.toggle('show', show);
+    }
+
+    // ===== MODAL =====
+    let confirmCallback = null;
+    window.closeModal = function() {
+        document.getElementById('confirm-modal').classList.remove('show');
+        confirmCallback = null;
+    };
+
+    function confirmAction(text, cb) {
+        document.getElementById('confirm-text').textContent = text;
+        document.getElementById('confirm-modal').classList.add('show');
+        confirmCallback = cb;
+        document.getElementById('confirm-action-btn').onclick = function() {
+            closeModal();
+            if (confirmCallback) confirmCallback();
+        };
+    }
+
+    // ===== STATS =====
+    async function updateStats() {
+        const fb = getFirebase();
+        if (!fb) return;
+
+        try {
+            const [projSnap, msgSnap] = await Promise.all([
+                fb.getDocs(fb.collection(fb.db, 'projects')),
+                fb.getDocs(fb.collection(fb.db, 'messages'))
+            ]);
+            document.getElementById('stat-projects').textContent = projSnap.size;
+            document.getElementById('stat-msgs').textContent = msgSnap.size;
+        } catch(e) {
+            document.getElementById('stat-projects').textContent = '—';
+        }
+    }
+
+    // ===== IMAGE PREVIEW =====
+    window.handleImagePreview = function(input) {
+        const file = input.files[0];
+        if (!file) return;
+        const preview = document.getElementById('img-preview');
+        preview.src = URL.createObjectURL(file);
+        preview.style.display = 'block';
+        document.querySelector('.img-upload-icon').style.display = 'none';
+        document.querySelector('.img-upload-text').style.display = 'none';
+    };
+
+    // ===== LOAD PROJECTS =====
+    async function loadProjects() {
+        const grid = document.getElementById('projects-grid');
+        const fb = getFirebase();
+
+        if (!fb) {
+            grid.innerHTML = `<div class="empty-state"><div class="empty-icon">⚙️</div><p>Firebase not configured yet — see warning above</p></div>`;
+            return;
+        }
+
+        try {
+            const q = fb.query(fb.collection(fb.db, 'projects'), fb.orderBy('createdAt', 'desc'));
+            const snap = await fb.getDocs(q);
+
+            if (snap.empty) {
+                grid.innerHTML = `<div class="empty-state"><div class="empty-icon">📂</div><p>No projects yet — add your first one below!</p></div>`;
+                return;
+            }
+
+            grid.innerHTML = '';
+            snap.forEach(docItem => {
+                const d = docItem.data();
+                grid.appendChild(createProjectCard(docItem.id, d));
+            });
+        } catch(e) {
+            grid.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><p>Firebase error: ${e.message}</p></div>`;
+        }
+    }
+
+    function createProjectCard(id, d) {
+        const card = document.createElement('div');
+        card.className = 'project-admin-card';
+
+        const imgHtml = d.imageUrl
+            ? `<img class="project-admin-img" src="${d.imageUrl}" alt="${d.name}" loading="lazy">`
+            : `<div class="project-admin-img-placeholder">${d.icon || '🚀'}</div>`;
+
+        const tags = (d.tags || []).map(t => `<span class="tag-pill">${t}</span>`).join('');
+
+        card.innerHTML = `
+            ${imgHtml}
+            <div class="project-admin-body">
+                <div class="project-admin-name">${d.name || 'Untitled'}</div>
+                <div class="project-admin-desc">${(d.description || '').substring(0, 100)}${d.description?.length > 100 ? '...' : ''}</div>
+                <div class="project-admin-tags">${tags}</div>
+                <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">
+                    ${d.link ? `<a href="${d.link}" target="_blank" rel="noopener" style="font-family:var(--font-mono);font-size:0.6rem;color:var(--gold);text-decoration:none;letter-spacing:0.08em;">View →</a>` : ''}
+                    <button class="btn btn-red" onclick="deleteProject('${id}', '${d.imageRef || ''}')">🗑 Delete</button>
+                </div>
+            </div>`;
+        return card;
+    }
+
+    // ===== ADD PROJECT =====
+    window.addProject = async function() {
+        const fb = getFirebase();
+        if (!fb) { toast('Firebase not configured!', true); return; }
+
+        const name  = document.getElementById('proj-name').value.trim();
+        const desc  = document.getElementById('proj-desc').value.trim();
+        const meta  = document.getElementById('proj-meta').value.trim();
+        const link  = document.getElementById('proj-link').value.trim();
+        const icon  = document.getElementById('proj-icon').value.trim() || '🚀';
+        const badge = document.getElementById('proj-badge').value.trim();
+        const tagsRaw = document.getElementById('proj-tags').value.trim();
+        const tags  = tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [];
+        const imgFile = document.getElementById('proj-img').files[0];
+
+        if (!name || !desc) { toast('Name and description are required!', true); return; }
+
+        setLoading(true);
+        try {
+            let imageUrl = '', imageRef = '';
+
+            if (imgFile) {
+                const ext = imgFile.name.split('.').pop();
+                imageRef = `projects/${Date.now()}.${ext}`;
+                const storageRef = fb.ref(fb.storage, imageRef);
+                await fb.uploadBytes(storageRef, imgFile);
+                imageUrl = await fb.getDownloadURL(storageRef);
+            }
+
+            await fb.addDoc(fb.collection(fb.db, 'projects'), {
+                name, description: desc, meta, link, icon, badge, tags, imageUrl, imageRef,
+                createdAt: Date.now()
+            });
+
+            toast('Project added successfully!');
+            clearForm();
+            await loadProjects();
+            await updateStats();
+        } catch(e) {
+            toast('Error: ' + e.message, true);
+        }
+        setLoading(false);
+    };
+
+    // ===== DELETE PROJECT =====
+    window.deleteProject = function(id, imageRef) {
+        confirmAction('This project will be permanently deleted.', async () => {
+            const fb = getFirebase();
+            if (!fb) return;
+
+            setLoading(true);
+            try {
+                if (imageRef) {
+                    try {
+                        const storageRef = fb.ref(fb.storage, imageRef);
+                        await fb.deleteObject(storageRef);
+                    } catch(e) { /* image might not exist */ }
+                }
+                await fb.deleteDoc(fb.doc(fb.db, 'projects', id));
+                toast('Project deleted.');
+                await loadProjects();
+                await updateStats();
+            } catch(e) {
+                toast('Error: ' + e.message, true);
+            }
+            setLoading(false);
+        });
+    };
+
+    // ===== CLEAR FORM =====
+    window.clearForm = function() {
+        ['proj-name','proj-desc','proj-meta','proj-link','proj-icon','proj-badge','proj-tags'].forEach(id => {
+            document.getElementById(id).value = '';
+        });
+        document.getElementById('proj-img').value = '';
+        const preview = document.getElementById('img-preview');
+        preview.style.display = 'none';
+        preview.src = '';
+        document.querySelector('.img-upload-icon').style.display = '';
+        document.querySelector('.img-upload-text').style.display = '';
+    };
+
+    // ===== LOAD MESSAGES =====
+    window.loadMessages = async function() {
+        const list = document.getElementById('messages-list');
+        const fb = getFirebase();
+
+        if (!fb) {
+            list.innerHTML = `<div class="empty-state"><div class="empty-icon">⚙️</div><p>Firebase not configured yet</p></div>`;
+            return;
+        }
+
+        list.innerHTML = `<div class="empty-state"><div class="empty-icon"><div class="spinner"></div></div><p>Loading...</p></div>`;
+
+        try {
+            const q = fb.query(fb.collection(fb.db, 'messages'), fb.orderBy('createdAt', 'desc'));
+            const snap = await fb.getDocs(q);
+
+            if (snap.empty) {
+                list.innerHTML = `<div class="empty-state"><div class="empty-icon">✉</div><p>No messages yet</p></div>`;
+                const badge = document.getElementById('msg-badge');
+                badge.style.display = 'none';
+                return;
+            }
+
+            const badge = document.getElementById('msg-badge');
+            badge.textContent = snap.size;
+            badge.style.display = '';
+
+            document.getElementById('stat-msgs').textContent = snap.size;
+
+            list.innerHTML = '';
+            snap.forEach(docItem => {
+                const d = docItem.data();
+                const date = d.createdAt ? new Date(d.createdAt).toLocaleString('en-IN', {
+                    day:'2-digit', month:'short', year:'numeric',
+                    hour:'2-digit', minute:'2-digit'
+                }) : '—';
+
+                const card = document.createElement('div');
+                card.className = 'message-card';
+                card.innerHTML = `
+                    <div class="msg-header">
+                        <div>
+                            <div class="msg-sender">${d.name || 'Anonymous'}</div>
+                            <div class="msg-email">${d.email || ''}</div>
+                        </div>
+                        <div class="msg-date">${date}</div>
+                    </div>
+                    <div class="msg-body">${d.message || ''}</div>
+                    <div class="msg-actions">
+                        ${d.email ? `<a href="mailto:${d.email}?subject=Re: Your message" class="btn btn-outline btn-sm">↩ Reply</a>` : ''}
+                        <button class="btn btn-red" onclick="deleteMessage('${docItem.id}')">🗑 Delete</button>
+                    </div>`;
+                list.appendChild(card);
+            });
+        } catch(e) {
+            list.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><p>Firebase error: ${e.message}</p></div>`;
+        }
+    };
+
+    // ===== DELETE MESSAGE =====
+    window.deleteMessage = function(id) {
+        confirmAction('This message will be permanently deleted.', async () => {
+            const fb = getFirebase();
+            if (!fb) return;
+            setLoading(true);
+            try {
+                await fb.deleteDoc(fb.doc(fb.db, 'messages', id));
+                toast('Message deleted.');
+                await loadMessages();
+                await updateStats();
+            } catch(e) {
+                toast('Error: ' + e.message, true);
+            }
+            setLoading(false);
+        });
+    };
+
+    // Run init if already authed on page load
+    if (sessionStorage.getItem('admin_auth') === '1') {
+        if (document.readyState === 'complete') init();
+        else window.addEventListener('load', init);
+    }
+
+})();
+</script>
+
+</body>
+</html>
