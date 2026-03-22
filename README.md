@@ -5,7 +5,7 @@
 
 A clean, dark, gold-accented personal portfolio website built with vanilla HTML, CSS, and JavaScript. Features an animated background, project showcase, contact form with email delivery, and a password-protected admin dashboard.
 
-🌐 **Live Site:** [jithesh-suvarna.github.io/portfolio](https://jithesh-suvarna.github.io/portfolio)
+🌐 **Live Site:** [jithesh-suvarna.github.io/portfolio](https://jithx-portfolio.netlify.app)
 
 ---
 
